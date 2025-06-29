@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -23,7 +23,7 @@ import CippForwardingSection from "../CippComponents/CippForwardingSection";
 
 const CippExchangeSettingsForm = (props) => {
   const userSettingsDefaults = useSettings();
-  const { formControl, currentSettings, userId, calPermissions, isFetching } = props;
+  const { formControl, currentSettings, userId, calPermissions, isFetching, oooRequest } = props;
   // State to manage the expanded panels
   const [expandedPanel, setExpandedPanel] = useState(null);
   const [relatedQueryKeys, setRelatedQueryKeys] = useState([]);
@@ -47,7 +47,6 @@ const CippExchangeSettingsForm = (props) => {
       Endpoint: `users`,
       tenantFilter: userSettingsDefaults.currentTenant,
       $select: "id,displayName,userPrincipalName,mail",
-      noPagination: true,
       $top: 999,
     },
     queryKey: `UserNames-${userSettingsDefaults.currentTenant}`,
@@ -59,7 +58,6 @@ const CippExchangeSettingsForm = (props) => {
       Endpoint: `contacts`,
       tenantFilter: userSettingsDefaults.currentTenant,
       $select: "displayName,mail,mailNickname",
-      noPagination: true,
       $top: 999,
     },
     queryKey: `TenantContacts-${userSettingsDefaults.currentTenant}`,
@@ -69,6 +67,31 @@ const CippExchangeSettingsForm = (props) => {
     datafromUrl: true,
     relatedQueryKeys: relatedQueryKeys,
   });
+
+  // Handle form reset and set dropdown state after successful API calls
+  useEffect(() => {
+    if (postRequest.isSuccess) {
+      // If this was an OOO submission, preserve the submitted values
+      if (relatedQueryKeys.includes(`ooo-${userId}`)) {
+        const submittedValues = formControl.getValues();
+        const oooFields = ['AutoReplyState', 'InternalMessage', 'ExternalMessage', 'StartTime', 'EndTime'];
+        
+        // Reset the form
+        formControl.reset();
+        
+        // Restore the submitted OOO values
+        oooFields.forEach(field => {
+          const value = submittedValues.ooo?.[field];
+          if (value !== undefined) {
+            formControl.setValue(`ooo.${field}`, value);
+          }
+        });
+      } else {
+        // For non-OOO submissions, just reset normally
+        formControl.reset();
+      }
+    }
+  }, [postRequest.isSuccess, relatedQueryKeys, userId, formControl]);
 
   const handleSubmit = (type) => {
     if (type === "calendar") {
@@ -112,9 +135,6 @@ const CippExchangeSettingsForm = (props) => {
       data: data,
       queryKey: "MailboxPermissions",
     });
-
-    // Reset the form
-    formControl.reset();
   };
 
   // Data for each section
@@ -154,13 +174,14 @@ const CippExchangeSettingsForm = (props) => {
       formContent: (
         <Stack spacing={2}>
           <Grid container spacing={2}>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippFormComponent
                 type="autoComplete"
                 name="ooo.AutoReplyState"
                 label="Auto Reply State"
                 multiple={false}
                 formControl={formControl}
+                creatable={false}
                 options={[
                   { label: "Enabled", value: "Enabled" },
                   { label: "Disabled", value: "Disabled" },
@@ -168,7 +189,7 @@ const CippExchangeSettingsForm = (props) => {
                 ]}
               />
             </Grid>
-            <Grid item size={6}>
+            <Grid size={6}>
               <Tooltip 
                 title={areDateFieldsDisabled ? "Scheduling is only available when Auto Reply State is set to Scheduled" : ""}
                 placement="bottom"
@@ -184,7 +205,7 @@ const CippExchangeSettingsForm = (props) => {
                 </Box>
               </Tooltip>
             </Grid>
-            <Grid item size={6}>
+            <Grid size={6}>
               <Tooltip 
                 title={areDateFieldsDisabled ? "Scheduling is only available when Auto Reply State is set to Scheduled" : ""}
                 placement="bottom"
@@ -200,7 +221,7 @@ const CippExchangeSettingsForm = (props) => {
                 </Box>
               </Tooltip>
             </Grid>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippFormComponent
                 type="richText"
                 label="Internal Message"
@@ -210,7 +231,7 @@ const CippExchangeSettingsForm = (props) => {
                 rows={4}
               />
             </Grid>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippFormComponent
                 type="richText"
                 label="External Message"
@@ -220,7 +241,7 @@ const CippExchangeSettingsForm = (props) => {
                 rows={4}
               />
             </Grid>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippApiResults apiObject={postRequest} />
             </Grid>
             <Grid>
@@ -246,7 +267,7 @@ const CippExchangeSettingsForm = (props) => {
       formContent: (
         <Stack spacing={2}>
           <Grid container spacing={2}>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippFormComponent
                 type="number"
                 label="Maximum Recipients"
@@ -260,7 +281,7 @@ const CippExchangeSettingsForm = (props) => {
                 }}
               />
             </Grid>
-            <Grid item size={12}>
+            <Grid size={12}>
               <CippApiResults apiObject={postRequest} />
             </Grid>
             <Grid>

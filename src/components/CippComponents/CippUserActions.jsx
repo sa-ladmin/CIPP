@@ -20,6 +20,7 @@ import {
   PhonelinkSetup,
   Shortcut,
 } from "@mui/icons-material";
+import { getCippLicenseTranslation } from "../../utils/get-cipp-license-translation";
 import { useSettings } from "/src/hooks/use-settings.js";
 
 export const CippUserActions = () => {
@@ -52,12 +53,30 @@ export const CippUserActions = () => {
     },
     {
       //tested
-
       label: "Create Temporary Access Password",
       type: "POST",
       icon: <Password />,
       url: "/api/ExecCreateTAP",
       data: { ID: "userPrincipalName" },
+      fields: [
+        {
+          type: "number",
+          name: "lifetimeInMinutes",
+          label: "Lifetime (Minutes)",
+          placeholder: "Leave blank for default",
+        },
+        {
+          type: "switch",
+          name: "isUsableOnce",
+          label: "One-time use only",
+        },
+        {
+          type: "datePicker",
+          name: "startDateTime",
+          label: "Start Date/Time (leave blank for immediate)",
+          dateTimeType: "datetime",
+        },
+      ],
       confirmText: "Are you sure you want to create a Temporary Access Password?",
       multiPost: false,
     },
@@ -249,7 +268,8 @@ export const CippUserActions = () => {
           creatable: false,
           api: {
             url: "/api/ListLicenses",
-            labelField: "skuPartNumber",
+            labelField: (option) =>
+              `${getCippLicenseTranslation([option])} (${option?.availableUnits} available)`,
             valueField: "skuId",
             queryKey: `licenses-${tenant}`,
           },
